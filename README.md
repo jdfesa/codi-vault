@@ -1,9 +1,6 @@
 <!-- markdownlint-disable MD033 MD036 MD041 MD045 MD046 -->
 <div align="center">
-    <img width="150" src="https://i.imgur.com/dca7pcI.png" alt="CodiVault Logo">
-</div>
-<div align="center">
-    <img width="350" src="https://i.imgur.com/tZhUf6Y.png" alt="CodiVault Logo">
+    <img width="600" src="./assets/banner.png" alt="CodiVault Banner" style="border-radius: 10px; margin-bottom: 20px;">
 </div>
 <div align="center">
 
@@ -269,12 +266,6 @@ facilito download <url>
 - [ ] Mejor manejo de errores y reintentos automáticos
 - [ ] Tests automatizados
 - [ ] Mejorar documentación
-
----
-
-## Cómo contribuir
-
-¡Todas las contribuciones son bienvenidas! Antes de enviar cambios, revisá la guía [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
