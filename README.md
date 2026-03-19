@@ -267,9 +267,13 @@ facilito download <url>
 | Cambio | Descripción |
 |---|---|
 | 🔄 Descarga con **FFmpeg** | Se reemplazó `vsd` (que fallaba en macOS) por `ffmpeg` con soporte de cookies HTTP |
-| 🔐 Detección de sesión mejorada | Ya no depende de un selector CSS frágil; ahora verifica las cookies de sesión directamente |
-| ⏱️ Tiempo de login ampliado | De 2 a 3 minutos para completar el login |
+| 🔐 Detección de sesión | Ya no depende de un selector CSS frágil; ahora verifica las cookies de sesión directamente |
+| ⏱️ Tiempo de login | De 2 a 3 minutos para completar el login |
 | 🐍 Compatibilidad Python | Probado y funcional con Python 3.12 en macOS |
+| 📊 Barra de progreso | Implementación visual interactiva con `rich` detallando tamaño, velocidad y tiempos |
+| 🤖 Asistente interactivo | Nuevo comando `interactive` para configurar todas las descargas guiadas paso a paso |
+| 🛡️ Extracción de Tokens | Bypass dinámico para enlaces premium protegidos (Asesorías/Bootcamps) que rebotaban en 403 |
+| 📂 Organización limpia | Organización estricta de videos individuales en su propio subdirectorio especializado |
 
 ---
 
@@ -277,10 +281,8 @@ facilito download <url>
 
 ¡Contribuciones son bienvenidas!
 
-- [ ] Barra de progreso visual para las descargas
-- [ ] Mejor manejo de errores y reintentos automáticos
-- [ ] Tests automatizados
-- [ ] Mejorar documentación
+- [ ] Manejo de reintentos automáticos de conexión
+- [ ] Incorporación de tests automatizados
 
 ---
 
