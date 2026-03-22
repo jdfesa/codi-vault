@@ -206,6 +206,9 @@ El script te guiará de la mano para establecer:
 2. La calidad de descarga.
 3. Opcionalmente configurar ocultar el navegador (`headless`). **Nota:** Si la consola arroja un error al obtener la información de un bootcamp (debido a las protecciones anti-bot automáticas del sitio), contesta 'n' a la ejecución de modo oculto para saltarte esa capa de seguridad exitosamente.
 
+> [!TIP]
+> **🚀 Auto-descarga Inteligente:** Si ingresas la URL de un **video individual** (terminada en `/videos/...`), el script detectará automáticamente si ese video pertenece a un curso más grande. Si es así, **codi-vault redirigirá la orden y comenzará a descargar el curso completo** para que no tengas que ir copiando enlaces uno por uno. Solo los videos legítimamente "sueltos" (como talleres o introducciones independientes) se descargarán como archivos individuales.
+
 ---
 
 ### Descarga Manual (Avanzado)
@@ -232,13 +235,14 @@ poetry run facilito download https://codigofacilito.com/programas/ingles-convers
 poetry run facilito download https://codigofacilito.com/cursos/docker -q 720p -t 5
 
 # Descargar un video individual
+# (Nota: ¡Si el video pertenece a un curso completo, codi-vault bajará el curso entero por ti!)
 poetry run facilito download https://codigofacilito.com/videos/...
 ```
 
 > [!TIP]
 > Si una descarga se interrumpe, volvé a ejecutar el mismo comando: los videos ya descargados se saltean automáticamente.
 
-Los videos se guardan en la carpeta `Facilito/` dentro del directorio del proyecto. Los cursos y programas se organizan automáticamente en subcarpetas estructuradas, mientras que los videos o clases individuales se guardan dentro de `Facilito/Videos Sueltos/`.
+Los videos de cursos y programas se enlazan de forma deductiva y se organizan automáticamente en subcarpetas estructuradas. Únicamente los videos de índole verdaderamente solitaria (que fallan en encontrar un "curso madre") se guardan aislados en la carpeta `Facilito/Videos Sueltos/`.
 
 ---
 
