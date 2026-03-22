@@ -58,7 +58,7 @@ class AsyncFacilito:
         logger.info("Opening browser — please log in manually.")
         logger.info("You have 3 minutes to complete the login.")
 
-        AUTH_COOKIE_NAMES = {"remember_user_token", "_pf_session"}
+        AUTH_COOKIE_NAMES = {"remember_user_token"}
 
         try:
             page = await self.page
@@ -128,6 +128,12 @@ class AsyncFacilito:
             from .constants import APP_NAME
             unit = await self.fetch_unit(url)
             if unit:
+                if getattr(unit, "parent_course_url", None):
+                    logger.info(f"Video belongs to a course! Redirecting to course download: {unit.parent_course_url}")
+                    course = await self.fetch_course(unit.parent_course_url)
+                    await download_course(self.context, course, **kwargs)
+                    return
+
                 extension = ".mp4" if unit.type == TypeUnit.VIDEO else ".mhtml"
                 save_path = Path(APP_NAME) / "Videos Sueltos" / (unit.slug + extension)
                 await download_unit(
@@ -164,7 +170,7 @@ class AsyncFacilito:
         Detects if the user is authenticated by checking for session cookies.
         This approach is resilient to HTML changes on the website.
         """
-        AUTH_COOKIE_NAMES = {"remember_user_token", "_pf_session"}
+        AUTH_COOKIE_NAMES = {"remember_user_token"}
 
         try:
             cookies = await self._context.cookies()

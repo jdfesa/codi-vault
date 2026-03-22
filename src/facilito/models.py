@@ -40,6 +40,7 @@ class Unit(BaseModel):
     name: str
     slug: str
     url: str
+    parent_course_url: str | None = None
 
 
 class Chapter(BaseModel):
