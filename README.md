@@ -307,4 +307,5 @@ Si encuentras fallas repentinas, bloqueos por *Cloudflare* (pantallas de "Just a
 
 Este proyecto se realiza con fines exclusivamente educativos y de aprendizaje. El código se ofrece "tal cual" sin ninguna garantía.
 
-No me hago responsable por cualquier mal uso. Es responsabilidad del usuario utilizarlo dentro de los límites legales y éticos..
+No me hago responsable por cualquier mal uso.
+Es responsabilidad del usuario utilizarlo dentro de los límites legales y éticos.
