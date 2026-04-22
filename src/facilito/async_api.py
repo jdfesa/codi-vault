@@ -55,14 +55,40 @@ class AsyncFacilito:
 
     @try_except_request
     async def login(self):
-        logger.info("Opening browser — please log in manually.")
-        logger.info("You have 3 minutes to complete the login.")
+        import os
+        from dotenv import load_dotenv
+
+        load_dotenv()
+        email = os.environ.get("FACILITO_EMAIL")
+        password = os.environ.get("FACILITO_PASSWORD")
+
+        if email and password:
+            logger.info("Found credentials in .env, attempting automatic login...")
+        else:
+            logger.info("Opening browser — please log in manually.")
+            logger.info("You have 3 minutes to complete the login.")
 
         AUTH_COOKIE_NAMES = {"remember_user_token"}
 
         try:
             page = await self.page
             await page.goto(LOGIN_URL)
+
+            if email and password:
+                try:
+                    # Wait for email input (might take a moment if cloudflare challenge is shown)
+                    await page.wait_for_selector('input[type="email"]', timeout=30000)
+                    await page.fill('input[type="email"]', email)
+                    
+                    await page.wait_for_selector('input[type="password"]', timeout=5000)
+                    await page.fill('input[type="password"]', password)
+                    
+                    # Submit the form by pressing Enter on the password field
+                    await page.press('input[type="password"]', 'Enter')
+                    logger.info("Credentials submitted, waiting for authentication...")
+                except Exception as e:
+                    logger.warning(f"Could not automate login: {e}")
+                    logger.info("Please complete login manually in the browser window.")
 
             # Wait until one of the auth cookies appears (max 3 minutes)
             timeout = 3 * 60 * 1000  # 3 minutes in ms

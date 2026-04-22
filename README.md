@@ -163,7 +163,29 @@ poetry run playwright install chromium
 
 ### Login
 
-Abrí un navegador real donde podés iniciar sesión con tu cuenta (Email, Google o Facebook):
+#### Login automático con `.env` (Recomendado) ⭐
+
+Creá un archivo `.env` en la raíz del proyecto con tus credenciales de Código Facilito:
+
+```env
+FACILITO_EMAIL=tu_correo@ejemplo.com
+FACILITO_PASSWORD=tu_contraseña
+```
+
+Luego ejecutá el login normalmente:
+
+```console
+poetry run facilito login
+```
+
+El script detectará las credenciales, abrirá el navegador, las completará automáticamente y guardará la sesión sin intervención manual.
+
+> [!IMPORTANT]
+> El archivo `.env` ya está excluido en `.gitignore`. Tus credenciales **nunca se subirán** al repositorio. Usá el archivo `.env.example` como referencia.
+
+#### Login manual (alternativa)
+
+Si preferís no guardar credenciales, podés iniciar sesión manualmente. El mismo comando `facilito login` abre un navegador real donde podés escribir tu Email, o usar Google/Facebook:
 
 ```console
 poetry run facilito login
@@ -174,9 +196,9 @@ Tenés **3 minutos** para completar el login. La sesión se guarda automáticame
 > [!TIP]
 > El login sólo hay que hacerlo una vez. La sesión persiste entre ejecuciones hasta que expire o hagas logout.
 
-#### Login con cookies (método alternativo)
+#### Login con cookies (alternativa avanzada)
 
-Si el método estándar falla (ej: captcha), podés exportar tus cookies desde el navegador:
+Si ambos métodos fallan (ej: captcha persistente), podés exportar tus cookies desde el navegador:
 
 1. Instalá la extensión [**GetCookies**](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) en Chrome
 2. Iniciá sesión en Código Facilito desde Chrome
@@ -283,6 +305,7 @@ facilito download <url>
 | 🛡️ Extracción de Tokens | Bypass dinámico para enlaces premium protegidos (Asesorías/Bootcamps) que rebotaban en 403 |
 | 🚀 Auto-descarga de Rutas | Al pasar un `.com/videos/...` particular, el script ubicará mágicamente el Curso padre y lo bajará entero sin intervención |
 | 📂 Organización limpia | Organización estricta de videos individuales en su propio subdirectorio especializado |
+| 🔑 Login automático `.env` | Soporte para credenciales en archivo `.env` local — el script las detecta y completa el formulario automáticamente |
 
 ---
 
