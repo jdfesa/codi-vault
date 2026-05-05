@@ -1,12 +1,128 @@
 import asyncio
+import re
 
 from playwright.async_api import BrowserContext, Page
 
-from ..constants import BASE_URL
 from ..errors import CourseError, UnitError
 from ..helpers import slugify
+from ..logger import logger
 from ..models import Bootcamp, Module, Unit
-from ..utils import get_unit_type
+from ..utils import ensure_absolute_url, get_unit_type
+
+
+def _clean_text(text: str) -> str:
+    text = " ".join(text.strip().split())
+    return re.sub(r"^Clase\s+\d+\s+", "", text)
+
+
+async def _get_link_title(link, fallback: str | None = None) -> str | None:
+    for selector in ("p.ibm.f-text-16", "p.ibm", ".ibm"):
+        try:
+            title = await link.locator(selector).first.text_content(timeout=500)
+        except Exception:
+            continue
+
+        if title:
+            return _clean_text(title)
+
+    try:
+        title = await link.inner_text(timeout=1000)
+    except Exception:
+        return fallback
+
+    if not title:
+        return fallback
+
+    title = _clean_text(title)
+    for prefix in ("done_all ", "check_circle_outline "):
+        if title.startswith(prefix):
+            title = title[len(prefix) :]
+
+    return title or fallback
+
+
+async def _extract_current_item_units(page: Page) -> list[Unit]:
+    """
+    Extract the units visible in a course/block player page.
+
+    Program entries point to /cursos/... pages. Some of those pages are complete
+    mini-courses or course blocks, so the final redirected video URL is not
+    enough; the expanded player sidebar contains the actual units to download.
+    """
+    UNIT_LINKS_SELECTOR = ".collapsible-body ul a[href]"
+
+    unit_links = page.locator(UNIT_LINKS_SELECTOR)
+    units_count = await unit_links.count()
+
+    units: list[Unit] = []
+    seen_urls: set[str] = set()
+
+    for i in range(units_count):
+        unit_link = unit_links.nth(i)
+        unit_url = await unit_link.get_attribute("href")
+
+        if not unit_url:
+            continue
+
+        full_url = ensure_absolute_url(unit_url)
+
+        try:
+            unit_type = get_unit_type(full_url)
+        except UnitError:
+            continue
+
+        if full_url in seen_urls:
+            continue
+
+        unit_name = await _get_link_title(unit_link)
+        if not unit_name:
+            continue
+
+        seen_urls.add(full_url)
+        units.append(
+            Unit(
+                type=unit_type,
+                name=unit_name,
+                slug=slugify(unit_name),
+                url=full_url,
+            )
+        )
+
+    return units
+
+
+async def _fetch_bootcamp_item_units(
+    context: BrowserContext,
+    url: str,
+    fallback_name: str,
+) -> list[Unit]:
+    page = await context.new_page()
+
+    try:
+        await page.goto(url, wait_until="domcontentloaded")
+        await page.wait_for_timeout(1000)
+
+        units = await _extract_current_item_units(page)
+        if units:
+            return units
+
+        final_url = page.url
+        unit_type = get_unit_type(final_url)
+        return [
+            Unit(
+                type=unit_type,
+                name=fallback_name,
+                slug=slugify(fallback_name),
+                url=final_url,
+            )
+        ]
+
+    except Exception as exc:
+        logger.debug(f"Could not parse bootcamp item {url}: {exc}")
+        return []
+
+    finally:
+        await page.close()
 
 
 async def _fetch_bootcamp_modules(page: Page) -> list[Module]:
@@ -18,8 +134,9 @@ async def _fetch_bootcamp_modules(page: Page) -> list[Module]:
     - Each module contains multiple classes/units
     - Units can be videos, lectures, or quizzes
     """
-    # Updated selectors for bootcamp structure
-    MODULES_SELECTOR = "ul.collapsible.f-topics li.f-radius-small"
+    # Top-level modules from the program page. Nested units are resolved by
+    # opening each course/block entry individually.
+    MODULES_SELECTOR = "ul.collapsible.f-topics > li.f-radius-small"
 
     try:
         modules_selectors = page.locator(MODULES_SELECTOR)
@@ -72,69 +189,37 @@ async def _fetch_bootcamp_modules(page: Page) -> list[Module]:
             # Clean module name: remove newlines, extra spaces, and tabs
             module_name = " ".join(module_name.strip().split())
 
-            # Get all units in this module
-            units_locators = modules_selectors.nth(i).locator(UNITS_SELECTOR)
-            units_count = await units_locators.count()
+            # Get all program entries in this module. Entries can be direct
+            # lessons, course blocks, or mini-courses with several units.
+            item_locators = modules_selectors.nth(i).locator(UNITS_SELECTOR)
+            items_count = await item_locators.count()
 
-            if not units_count:
+            if not items_count:
                 # Module might be empty, skip it
                 continue
 
             units: list[Unit] = []
-            for j in range(units_count):
-                # Unit name is in nested p tags with class "ibm"
-                UNIT_NAME_SELECTOR = "p.ibm.f-text-16"
+            seen_unit_urls: set[str] = set()
+            for j in range(items_count):
+                item_link = item_locators.nth(j)
+                item_name = await _get_link_title(item_link)
+                item_url = await item_link.get_attribute("href")
 
-                unit_name = (
-                    await units_locators.nth(j)
-                    .locator(UNIT_NAME_SELECTOR)
-                    .first.text_content()
-                )
-                unit_url = await units_locators.nth(j).first.get_attribute("href")
-
-                if not unit_name or not unit_url:
+                if not item_name or not item_url:
                     # Skip invalid units
                     continue
 
-                # Clean unit name: remove newlines, extra spaces, and tabs
-                unit_name = " ".join(unit_name.strip().split())
+                item_units = await _fetch_bootcamp_item_units(
+                    page.context,
+                    ensure_absolute_url(item_url),
+                    item_name,
+                )
+                for unit in item_units:
+                    if unit.url in seen_unit_urls:
+                        continue
 
-                # Build full URL
-                full_url = BASE_URL + unit_url
-
-                # For bootcamp lessons, we need to follow the redirect
-                # to get the actual video URL
-                # The URLs like /cursos/bootcamp-...?play=true redirect
-                # to /videos/...
-                # We'll detect the type after getting the final URL
-                try:
-                    # Open page and wait for navigation to complete
-                    # We only need domcontentloaded, not networkidle,
-                    # to get video metadata
-                    temp_page = await page.context.new_page()
-                    await temp_page.goto(full_url, wait_until="domcontentloaded")
-                    # Get final URL after redirects
-                    final_url = temp_page.url
-                    await temp_page.close()
-
-                    # Now determine the type based on final URL
-                    unit_type = get_unit_type(final_url)
-
-                    units.append(
-                        Unit(
-                            type=unit_type,
-                            name=unit_name,
-                            slug=slugify(unit_name),
-                            url=final_url,
-                        )
-                    )
-                except Exception:
-                    # If redirect fails, skip this unit
-                    try:
-                        await temp_page.close()
-                    except Exception:
-                        pass
-                    continue
+                    seen_unit_urls.add(unit.url)
+                    units.append(unit)
 
             if units:  # Only add module if it has valid units
                 modules.append(
