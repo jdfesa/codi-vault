@@ -3,7 +3,7 @@ from playwright.async_api import BrowserContext
 from ..errors import UnitError
 from ..helpers import slugify
 from ..models import TypeUnit, Unit
-from ..utils import get_unit_type
+from ..utils import canonical_content_url, get_unit_type
 
 
 async def fetch_unit(context: BrowserContext, url: str):
@@ -22,6 +22,7 @@ async def fetch_unit(context: BrowserContext, url: str):
             )
     except Exception as e:
         from ..logger import logger
+
         logger.error(f"Error getting unit type: {e}")
         raise UnitError()
 
@@ -33,10 +34,11 @@ async def fetch_unit(context: BrowserContext, url: str):
 
         parent_course_url = None
         try:
-            course_path = await page.locator("a[href^='/cursos/']").first.get_attribute("href", timeout=1000)
+            course_path = await page.locator("a[href^='/cursos/']").first.get_attribute(
+                "href", timeout=1000
+            )
             if course_path:
-                from ..constants import BASE_URL
-                parent_course_url = BASE_URL + course_path
+                parent_course_url = canonical_content_url(course_path)
         except Exception:
             pass
 
@@ -47,6 +49,7 @@ async def fetch_unit(context: BrowserContext, url: str):
 
     except Exception as e:
         from ..logger import logger
+
         logger.error(f"Error fetching unit page: {e}")
         raise UnitError()
 

@@ -3,7 +3,7 @@ import asyncio
 from playwright.async_api import BrowserContext, Page
 
 from ..constants import BASE_URL
-from ..errors import CourseError, UnitError
+from ..errors import CourseError
 from ..helpers import slugify
 from ..models import Chapter, Course, Unit
 from ..utils import get_unit_type
@@ -77,10 +77,7 @@ async def _fetch_course_chapters(page: Page) -> list[Chapter]:
             )
 
     except Exception:
-        raise UnitError()
-
-    finally:
-        await page.close()
+        raise CourseError()
 
     return chapters
 

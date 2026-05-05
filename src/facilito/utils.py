@@ -1,9 +1,11 @@
 import asyncio
 import functools
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from playwright.async_api import BrowserContext, Page
 
+from .constants import BASE_URL
 from .errors import UnitError
 from .helpers import read_json, write_json
 from .logger import logger
@@ -171,6 +173,41 @@ def is_quiz(url: str) -> bool:
     True
     """
     return "/quizzes/" in url
+
+
+def ensure_absolute_url(url: str) -> str:
+    """
+    Convert a relative Codigo Facilito URL into an absolute URL.
+    """
+    if url.startswith("/"):
+        return BASE_URL + url
+    return url
+
+
+def canonical_content_url(url: str) -> str:
+    """
+    Return the canonical downloadable content URL.
+
+    Codigo Facilito uses ``?play=true`` for player pages. Those URLs are useful
+    for watching a unit, but collectors need the overview page when downloading
+    the full parent course.
+    """
+    url = ensure_absolute_url(url)
+    parsed_url = urlsplit(url)
+    query_params = [
+        (key, value)
+        for key, value in parse_qsl(parsed_url.query, keep_blank_values=True)
+        if key != "play"
+    ]
+    return urlunsplit(
+        (
+            parsed_url.scheme,
+            parsed_url.netloc,
+            parsed_url.path,
+            urlencode(query_params),
+            parsed_url.fragment,
+        )
+    )
 
 
 def get_unit_type(url: str) -> TypeUnit:

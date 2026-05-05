@@ -56,6 +56,7 @@ class AsyncFacilito:
     @try_except_request
     async def login(self):
         import os
+
         from dotenv import load_dotenv
 
         load_dotenv()
@@ -76,15 +77,15 @@ class AsyncFacilito:
 
             if email and password:
                 try:
-                    # Wait for email input (might take a moment if cloudflare challenge is shown)
+                    # Cloudflare can delay the login form briefly.
                     await page.wait_for_selector('input[type="email"]', timeout=30000)
                     await page.fill('input[type="email"]', email)
-                    
+
                     await page.wait_for_selector('input[type="password"]', timeout=5000)
                     await page.fill('input[type="password"]', password)
-                    
+
                     # Submit the form by pressing Enter on the password field
-                    await page.press('input[type="password"]', 'Enter')
+                    await page.press('input[type="password"]', "Enter")
                     logger.info("Credentials submitted, waiting for authentication...")
                 except Exception as e:
                     logger.warning(f"Could not automate login: {e}")
@@ -101,7 +102,8 @@ class AsyncFacilito:
 
                 cookies = await self._context.cookies()
                 auth_cookies = [
-                    c for c in cookies
+                    c
+                    for c in cookies
                     if c.get("name") in AUTH_COOKIE_NAMES and c.get("value")
                 ]
 
@@ -148,17 +150,35 @@ class AsyncFacilito:
 
         from .downloaders import download_bootcamp, download_course, download_unit
         from .models import TypeUnit
-        from .utils import is_bootcamp, is_course, is_lecture, is_quiz, is_video
+        from .utils import (
+            canonical_content_url,
+            is_bootcamp,
+            is_course,
+            is_lecture,
+            is_quiz,
+            is_video,
+        )
 
         if is_video(url) or is_lecture(url) or is_quiz(url):
             from .constants import APP_NAME
+
             unit = await self.fetch_unit(url)
             if unit:
                 if getattr(unit, "parent_course_url", None):
-                    logger.info(f"Video belongs to a course! Redirecting to course download: {unit.parent_course_url}")
-                    course = await self.fetch_course(unit.parent_course_url)
-                    await download_course(self.context, course, **kwargs)
-                    return
+                    parent_course_url = canonical_content_url(unit.parent_course_url)
+                    logger.info(
+                        "Video belongs to a course! Redirecting to course "
+                        f"download: {parent_course_url}"
+                    )
+                    course = await self.fetch_course(parent_course_url)
+                    if course:
+                        await download_course(self.context, course, **kwargs)
+                        return
+
+                    logger.warning(
+                        "Parent course could not be parsed. Downloading the "
+                        "requested unit only."
+                    )
 
                 extension = ".mp4" if unit.type == TypeUnit.VIDEO else ".mhtml"
                 save_path = Path(APP_NAME) / "Videos Sueltos" / (unit.slug + extension)
@@ -170,12 +190,14 @@ class AsyncFacilito:
                 )
 
         elif is_course(url):
-            course = await self.fetch_course(url)
-            await download_course(self.context, course, **kwargs)
+            course = await self.fetch_course(canonical_content_url(url))
+            if course:
+                await download_course(self.context, course, **kwargs)
 
         elif is_bootcamp(url):
             bootcamp = await self.fetch_bootcamp(url)
-            await download_bootcamp(self.context, bootcamp, **kwargs)
+            if bootcamp:
+                await download_bootcamp(self.context, bootcamp, **kwargs)
 
         else:
             raise Exception(
@@ -201,7 +223,9 @@ class AsyncFacilito:
         try:
             cookies = await self._context.cookies()
             auth_cookies = [
-                c for c in cookies if c.get("name") in AUTH_COOKIE_NAMES and c.get("value")
+                c
+                for c in cookies
+                if c.get("name") in AUTH_COOKIE_NAMES and c.get("value")
             ]
 
             if auth_cookies:

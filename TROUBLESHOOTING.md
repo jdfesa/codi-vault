@@ -30,6 +30,16 @@ Este es el error genérico que arroja el script cuando falla al procesar la pág
 
 ---
 
+## 3. Error: video redirige a curso con `?play=true` y termina en `'NoneType' object has no attribute 'slug'`
+
+### **Causa Histórica 3: URL de reproductor usada como URL de curso**
+* **El Problema:** Algunos videos individuales contienen un enlace de regreso al curso con forma `/cursos/<slug>?play=true`. Ese parámetro abre el reproductor, no la página índice del curso. El flujo antiguo detectaba ese enlace como "curso padre", intentaba parsearlo con `fetch_course()` y el parser no encontraba los selectores del temario.
+* **El Efecto:** `fetch_course()` fallaba y el wrapper devolvía `None`. Después, `download_course()` intentaba acceder a `course.slug`, produciendo el error secundario `'NoneType' object has no attribute 'slug'`.
+* **Nuestra Solución:** Se agregó `canonical_content_url()` en `src/facilito/utils.py` para convertir URLs relativas en absolutas y remover el parámetro `play` antes de descargar el curso padre. Además, `AsyncFacilito.download()` valida que el curso exista antes de enviarlo al downloader; si no se puede parsear el curso padre, baja solo la unidad solicitada en lugar de romper el proceso.
+* **Qué hacer si a futuro vuelve a fallar:** Revisa en `facilito.log` la línea `Redirecting to course download:`. Si todavía aparece `?play=true` en esa URL, la normalización no se está aplicando. Si la URL ya está limpia pero falla, probablemente cambió el DOM del índice del curso y habrá que actualizar los selectores en `src/facilito/collectors/course.py`.
+
+---
+
 ## Recomendaciones Generales
 Si de repente empiezas a experimentar fallas recurrentes:
 1. Corre un `poetry run facilito logout` y vuelve a acceder con `poetry run facilito login`. Nueve de cada diez veces, tu cookie expiró o caducó del lado del servidor.
